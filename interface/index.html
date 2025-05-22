@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px auto;
+            max-width: 600px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        h2 {
+            color: #333;
+        }
+        #chatbox {
+            border: 1px solid #ccc;
+            padding: 15px;
+            height: 300px;
+            overflow-y: scroll;
+            background-color: #fff;
+            margin-bottom: 15px;
+        }
+        .message {
+            margin-bottom: 10px;
+        }
+        .user {
+            font-weight: bold;
+            color: #007acc;
+        }
+        .bot {
+            color: #333;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 15px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Upload PDF</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" required />
+        <button type="submit">Upload</button>
+    </form>
+
+    <h2>Chatbot</h2>
+    <div id="chatbox"></div>
+    <form id="questionForm">
+        <input type="text" name="question" id="questionInput" placeholder="Ask a question..." required />
+        <button type="submit">Send</button>
+    </form>
+
+    <script>
+        window.onload = function() {
+            const chatbox = document.getElementById("chatbox");
+
+            document.getElementById("uploadForm").onsubmit = async function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const response = await fetch("/upload/", {
+                    method: "POST",
+                    body: formData
+                });
+                if (response.ok) {
+                    alert("PDF uploaded and ingested!");
+                } else {
+                    alert("Failed to upload PDF.");
+                }
+            };
+
+            document.getElementById("questionForm").onsubmit = async function(e) {
+                e.preventDefault();
+                const input = document.getElementById("questionInput");
+                const question = input.value.trim();
+
+                if (!question) return;
+
+                const userMessage = document.createElement("div");
+                userMessage.className = "message user";
+                userMessage.textContent = "You: " + question;
+                chatbox.appendChild(userMessage);
+
+              
+                input.value = "";
+
+                try {
+                    const response = await fetch("/ask/", {
+                        method: "POST",
+                        body: new URLSearchParams({ question })
+                    });
+
+                    const botMessage = document.createElement("div");
+                    botMessage.className = "message bot";
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        botMessage.textContent = "Bot: " + data.answer;
+                    } else {
+                        const errorText = await response.text();
+                        botMessage.textContent = "Error: " + errorText;
+                    }
+
+                    chatbox.appendChild(botMessage);
+                    chatbox.scrollTop = chatbox.scrollHeight;
+
+                } catch (err) {
+                    const botMessage = document.createElement("div");
+                    botMessage.className = "message bot";
+                    botMessage.textContent = "Bot: Sorry, something went wrong.";
+                    chatbox.appendChild(botMessage);
+                }
+            };
+        };
+    </script>
+</body>
+</html>
